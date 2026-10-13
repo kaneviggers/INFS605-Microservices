@@ -5,17 +5,20 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - COURSE_DB_PASSWORD=${COURSE_DB_PASSWORD}
+      - STUDENT_DB_PASSWORD=${STUDENT_DB_PASSWORD}
+      - FEEDBACK_DB_PASSWORD=${FEEDBACK_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql
       - ./db/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 10
   
   course-catalogue:
-    build: ./course-catalogue
+    build: ./courses-service
     environment:
       PORT: 3000
       DATABASE_URL: "postgres://course_user:${COURSE_DB_PASSWORD}@postgres:5432/course_db"

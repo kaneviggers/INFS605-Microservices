@@ -13,7 +13,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   CREATE DATABASE feedback_db OWNER feedback_user;
   REVOKE CONNECT ON DATABASE feedback_db FROM PUBLIC;
 
-  CREATE USER notification_user WITH PASSWORD '$NOTIFICATION_DB_PASSWORD';
-  CREATE DATABASE notification_db OWNER notification_user;
-  REVOKE CONNECT ON DATABASE notification_db FROM PUBLIC;
+  CREATE USER student_user WITH PASSWORD '$STUDENT_DB_PASSWORD';
+  CREATE DATABASE student_db OWNER student_user;
+  REVOKE CONNECT ON DATABASE student_db FROM PUBLIC;
 EOSQL

@@ -1,0 +1,498 @@
+openapi: 3.1.0
+info:
+  version: 1.0.0
+  title: "INFS605-23204039: OpenAPI Spec"
+  description: API Spec for all 3 microservices
+  contact:
+    name: Kane Viggers
+    url: "https://kaneviggers.com"
+    email: hello@kaneviggers.com
+paths:
+  /courses:
+    get:
+      summary: Get all courses
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+      tags:
+        - Courses
+      description: Returns all courses
+    post:
+      summary: Create a new course
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - course_code
+              properties:
+                title:
+                  type: string
+                  description: The name of the course
+                course_code:
+                  type: string
+                  description: Unique identifier code for course
+        required: true
+      tags:
+        - Courses
+  "/courses/{course_code}":
+    get:
+      summary: Get a course
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+      tags:
+        - Courses
+    patch:
+      summary: Update a course
+      responses:
+        "200":
+          description: Updated course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          description: "Course not found"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  description: The name of the course
+      tags:
+        - Courses
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+    delete:
+      summary: Delete a course
+      responses:
+        "204":
+          description: Deleted course
+        "404":
+          description: Course already deleted or not found
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+      tags:
+        - Courses
+  "/courses/{course_code}/students/{student_id}":
+    get:
+      summary: Returns HTTP status code on whether the student is enrolled
+      responses:
+        "204":
+          description: Student enrolled
+        "404":
+          description: Student not enrolled
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+        - name: student_id
+          in: path
+          schema:
+            type: string
+          required: true
+      tags:
+        - Courses
+    delete:
+      summary: Unenroll a student
+      responses:
+        "204":
+          description: Student has been unenrolled
+        "404":
+          description: Student is already unenrolled or not found
+      tags:
+        - Courses
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+        - name: student_id
+          in: path
+          schema:
+            type: string
+          required: true
+  "/courses/{course_code}/students":
+    post:
+      summary: Enroll a student
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "409":
+          description: Student already enrolled
+        "404":
+          description: "Course or student not found"
+      tags:
+        - Courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - student_id
+              properties:
+                student_id:
+                  type: string
+                  description: Unique identifier for a student
+        required: true
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+  "/feedback/{feedback_id}":
+    patch:
+      summary: Update a piece of feedback
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+      tags:
+        - Feedback
+      parameters:
+        - name: feedback_id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - comment
+              properties:
+                comment:
+                  type: string
+                  description: Students feedback on the course
+        required: true
+    delete:
+      summary: Delete a piece of feedback
+      responses:
+        "204":
+          description: Feedback deleted
+        "404":
+          description: Feedback already deleted or not found
+      tags:
+        - Feedback
+      parameters:
+        - name: feedback_id
+          in: path
+          schema:
+            type: string
+          required: true
+    get:
+      summary: Get a piece of feedback
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+      tags:
+        - Feedback
+      parameters:
+        - name: feedback_id
+          in: path
+          schema:
+            type: string
+          required: true
+  "/feedback/course/{course_code}":
+    get:
+      summary: Get all feedback for a course
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feedback"
+      tags:
+        - Feedback
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+          description: Unique identifier code for course
+      description: Returns all feedback for a course
+    post:
+      summary: Adds feedback to a course
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+      tags:
+        - Feedback
+      description: Adds feedback to a given course, student must be enrolled in the course
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - student_id
+                - comment
+              properties:
+                student_id:
+                  type: string
+                  description: Unique identifier code for a student
+                comment:
+                  type: string
+                  description: Students feedback on the course
+        required: true
+      parameters:
+        - name: course_code
+          in: path
+          schema:
+            type: string
+          required: true
+  /students:
+    get:
+      summary: Get all students
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+      tags:
+        - Students
+    post:
+      summary: Create a new student
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "409":
+          description: "Student with sent email already exists"
+      tags:
+        - Students
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - degree
+              properties:
+                name:
+                  type: string
+                  description: Name of the student
+                email:
+                  type: string
+                  description: Email address of the student
+                  format: email
+                degree:
+                  type: string
+                  description: Degree the student is enrolled for
+        required: true
+  "/students/{student_id}":
+    delete:
+      summary: Delete a student
+      responses:
+        "204":
+          description: Deleted student
+        "404":
+          description: Student already deleted or not found
+      tags:
+        - Students
+      parameters:
+        - name: student_id
+          in: path
+          schema:
+            type: string
+          required: true
+    patch:
+      summary: Update student details
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+      parameters:
+        - name: student_id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the student
+                email:
+                  type: string
+                  description: Email address of the student
+                  format: email
+                degree:
+                  type: string
+                  description: Degree the student is enrolled for
+        required: true
+      tags:
+        - Students
+    get:
+      summary: Get a student's details
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "404":
+          description: Student not found
+      parameters:
+        - name: student_id
+          in: path
+          schema:
+            type: string
+          required: true
+      tags:
+        - Students
+components:
+  schemas:
+    Course:
+      type: object
+      required:
+        - title
+        - course_code
+        - student_ids
+      properties:
+        title:
+          type: string
+          description: The name of the course
+        course_code:
+          type: string
+          description: Unique identifier for course
+        student_ids:
+          type: array
+          description: Array of student IDs
+          items:
+            type: string
+          uniqueItems: true
+    Feedback:
+      type: object
+      required:
+        - feedback_id
+        - course_code
+        - student_id
+        - comment
+      properties:
+        feedback_id:
+          type: string
+          description: Unique identifier for a feedback submission
+          readOnly: true
+        course_code:
+          type: string
+          description: Unique identifier for course
+        student_id:
+          type: string
+          description: Unique identifier for a student
+        comment:
+          type: string
+          description: Students feedback on the course
+    Student:
+      type: object
+      required:
+        - student_id
+        - name
+        - email
+        - degree
+      properties:
+        student_id:
+          type: string
+          description: Unique identifier for a student
+          readOnly: true
+        name:
+          type: string
+          description: Name of the student
+        email:
+          type: string
+          description: Email address of the student
+          format: email
+        degree:
+          type: string
+          description: Degree the student is enrolled for
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+security:
+  - ApiKey: []
+servers:
+  - url: "https://infs.kaneviggers.com/api"
