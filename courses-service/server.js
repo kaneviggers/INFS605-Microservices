@@ -75,7 +75,7 @@ app.post('/courses', async (req, res) => {
 })
 
 // Enroll a student
-app.post('/courses/:course_id/students', async (req, res) => {
+app.post('/courses/:course_code/students', async (req, res) => {
     if (!req.body) return res.status(400).json({ error: "Request body requried" })
     const { student_id } = req.body;
     if (!student_id) return res.status(400).json({ error: "student_id is required" });
@@ -94,8 +94,8 @@ app.post('/courses/:course_id/students', async (req, res) => {
     try {
         await pool.query(`
             INSERT INTO enrolments (course_code, student_id) VALUES ($1, $2)`,
-        [req.params.course_id, student_id]);
-        res.status(201).json({ course_code: req.params.course_id, student_id });
+        [req.params.course_code, student_id]);
+        res.status(201).json({ course_code: req.params.course_code, student_id });
     } catch (err) {
         if (err.code === '23503') return res.status(404).end();
         if (err.code === '23505') return res.status(409).end();
@@ -103,10 +103,46 @@ app.post('/courses/:course_id/students', async (req, res) => {
 })
 
 // Unenroll a student
+app.delete('/courses/:course_code/students/:student_id', async (req, res) => {
+    const { course_code, student_id } = req.params;
+    
+    // Check if student exists
+    try {
+        const resp = await fetch(`http://students-service:3000/students/${student_id}`);
+        if (resp.status === 404) return res.status(resp.status).json({ error: "student not found" });
+        if (!resp.ok) return res.status(resp.status).json({ error: "students-service error" });
+    } catch (err) {
+        // This would be a network failure
+        res.send(502).json({ error: "students-service unavailable" });
+    }
+
+    // Remove the student from the course
+    const { rowCount } = await pool.query(`
+            DELETE FROM enrolments WHERE course_code = $1 AND student_id = $2`,
+        [course_code, student_id]);
+    res.status(rowCount ? 204 : 404).end();
+})
 
 // Returns http code of if the student is enrolled
+app.get('/courses/:course_code/students/:student_id', async (req, res) => {
+    const { course_code, student_id } = req.params;
+    
+    // Check if student exists
+    try {
+        const resp = await fetch(`http://students-service:3000/students/${student_id}`);
+        if (resp.status === 404) return res.status(resp.status).json({ error: "student not found" });
+        if (!resp.ok) return res.status(resp.status).json({ error: "students-service error" });
+    } catch (err) {
+        // This would be a network failure
+        res.send(502).json({ error: "students-service unavailable" });
+    }
 
-// Both are /courses/:course_id/students/:student_id
+    // See if there is a student enrolled
+    const { rowCount } = await pool.query(`
+            SELECT * FROM enrolments WHERE course_code = $1 AND student_id = $2`,
+        [course_code, student_id]);
+    res.status(rowCount ? 200 : 404).end();
+})
 
 const PORT = process.env.PORT || 3000;
 initDb()
