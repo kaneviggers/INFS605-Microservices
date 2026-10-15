@@ -2,7 +2,7 @@
 
 - [x] Courses service
 - [x] Students service
-- [ ] Feedback service
+- [x] Feedback service
 - [ ] Zod payload validation
 - [ ] Proper logging
 - [ ] RLS

@@ -45,6 +45,20 @@ services:
       timeout: 3s
       retries: 10
   
+  feedback-service:
+    build: ./feedback-service
+    environment:
+      PORT: 3000
+      DATABASE_URL: "postgres://feedback_user:${FEEDBACK_DB_PASSWORD}@postgres:5432/feedback_db"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  
   gateway:
     image: nginx:alpine
     ports:
@@ -55,6 +69,8 @@ services:
       courses-service:
         condition: service_healthy
       students-service:
+        condition: service_healthy
+      feedback-service:
         condition: service_healthy
 
 volumes:
