@@ -153,18 +153,20 @@ app.post("/courses/:course_code/students", async (req, res) => {
 app.delete("/courses/:course_code/students/:student_id", async (req, res) => {
   const { course_code, student_id } = req.params;
 
-  // Check if student exists
+  // Check if student exists and is currently enrolled
   try {
     const resp = await fetch(
-      `http://courses-service:3000/${course_code}/students/${student_id}`,
+      `http://courses-service:3000/courses/${course_code}/students/${student_id}`,
     );
-    if (resp.status === 404)
-      return res.status(resp.status).json(resp.body);
+    if (resp.status === 404) {
+      const body = await resp.json();
+      return res.status(404).json(body);
+    }
     if (!resp.ok)
       return res.status(resp.status).json({ error: "students-service error" });
   } catch (err) {
     // This would be a network failure
-    res.send(502).json({ error: "students-service unavailable" });
+    return res.status(502).json({ error: "students-service unavailable" });
   }
 
   // Remove the student from the course
@@ -186,12 +188,12 @@ app.get("/courses/:course_code/students/:student_id", async (req, res) => {
       `http://students-service:3000/students/${student_id}`,
     );
     if (resp.status === 404)
-      return res.status(resp.status).json({ error: "student not found" });
+      return res.status(404).json({ error: "student not found" });
     if (!resp.ok)
       return res.status(resp.status).json({ error: "students-service error" });
   } catch (err) {
     // This would be a network failure
-    res.send(502).json({ error: "students-service unavailable" });
+    res.status(502).json({ error: "students-service unavailable" });
   }
 
   // Check if course exists
