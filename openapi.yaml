@@ -11,9 +11,10 @@ paths:
   /courses:
     get:
       summary: Get all courses
+      description: Returns all courses
       responses:
         "200":
-          description: ""
+          description: All courses with their enrolled student IDs
           content:
             application/json:
               schema:
@@ -22,16 +23,23 @@ paths:
                   $ref: "#/components/schemas/Course"
       tags:
         - Courses
-      description: Returns all courses
     post:
       summary: Create a new course
       responses:
         "201":
-          description: ""
+          description: Created course
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Course"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: Course with that course_code already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
       requestBody:
         content:
           application/json:
@@ -53,32 +61,37 @@ paths:
   "/courses/{course_code}":
     get:
       summary: Get a course
+      description: Returns a single-element array containing the matching course
       responses:
         "200":
-          description: ""
+          description: Array containing the course
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Course"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+                minItems: 1
+                maxItems: 1
+        "404":
+          description: Course not found (empty body)
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/course_code"
       tags:
         - Courses
     patch:
       summary: Update a course
       responses:
         "200":
-          description: Updated course
+          description: Updated course (without student_ids)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Course"
+                $ref: "#/components/schemas/CourseSummary"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
-          description: "Course not found"
+          description: Course not found (empty body)
       requestBody:
         content:
           application/json:
@@ -90,48 +103,49 @@ paths:
                 title:
                   type: string
                   description: The name of the course
+        required: true
       tags:
         - Courses
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/course_code"
     delete:
       summary: Delete a course
+      description: Deleting a course also removes all of its enrolments
       responses:
         "204":
           description: Deleted course
         "404":
           description: Course already deleted or not found
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/course_code"
       tags:
         - Courses
   "/courses/{course_code}/students/{student_id}":
     get:
       summary: Returns HTTP status code on whether the student is enrolled
+      description: Checks with the students service that the student exists, then checks the course and enrolment
       responses:
-        "204":
-          description: Student enrolled
+        "200":
+          description: Student enrolled (empty body)
+        "400":
+          description: Students service rejected the student_id (e.g. not an integer)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
-          description: Student not enrolled
+          description: >-
+            Student not enrolled (empty body), or student/course not found
+            (body with `student not found` or `course not found`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/StudentsServiceUnavailable"
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
-        - name: student_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/course_code"
+        - $ref: "#/components/parameters/enrolment_student_id"
       tags:
         - Courses
     delete:
@@ -139,35 +153,58 @@ paths:
       responses:
         "204":
           description: Student has been unenrolled
-        "404":
-          description: Student is already unenrolled or not found
-      tags:
-        - Courses
-      parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
-        - name: student_id
-          in: path
-          schema:
-            type: string
-          required: true
-  "/courses/{course_code}/students":
-    post:
-      summary: Enroll a student
-      responses:
-        "201":
-          description: ""
+        "400":
+          description: Students service rejected the student_id (e.g. not an integer)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Course"
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Student or course not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/StudentsServiceUnavailable"
+      tags:
+        - Courses
+      parameters:
+        - $ref: "#/components/parameters/course_code"
+        - $ref: "#/components/parameters/enrolment_student_id"
+  "/courses/{course_code}/students":
+    post:
+      summary: Enroll a student
+      description: Checks with the students service that the student exists before enrolling
+      responses:
+        "201":
+          description: Student enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrolment"
+        "400":
+          description: >-
+            Request body failed validation, or the students service rejected
+            the student_id (e.g. not an integer)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Course or student not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Student already enrolled
-        "404":
-          description: "Course or student not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/StudentsServiceUnavailable"
       tags:
         - Courses
       requestBody:
@@ -180,32 +217,32 @@ paths:
               properties:
                 student_id:
                   type: string
-                  description: Unique identifier for a student
+                  description: Unique identifier for a student, sent as a string (e.g. "1")
         required: true
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/course_code"
   "/feedback/{feedback_id}":
     patch:
       summary: Update a piece of feedback
       responses:
         "200":
-          description: ""
+          description: Updated feedback
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Feedback"
+        "400":
+          description: Request body failed validation, or feedback_id is not an integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Feedback not found (empty body)
       tags:
         - Feedback
       parameters:
-        - name: feedback_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/feedback_id"
       requestBody:
         content:
           application/json:
@@ -223,67 +260,86 @@ paths:
       responses:
         "204":
           description: Feedback deleted
+        "400":
+          $ref: "#/components/responses/InvalidId"
         "404":
           description: Feedback already deleted or not found
       tags:
         - Feedback
       parameters:
-        - name: feedback_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/feedback_id"
     get:
       summary: Get a piece of feedback
       responses:
         "200":
-          description: ""
+          description: The feedback
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Feedback"
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          description: Feedback not found (empty body)
       tags:
         - Feedback
       parameters:
-        - name: feedback_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/feedback_id"
   "/feedback/course/{course_code}":
     get:
       summary: Get all feedback for a course
+      description: Returns all feedback for a course
       responses:
         "200":
-          description: ""
+          description: All feedback for the course
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Feedback"
+                minItems: 1
+        "404":
+          description: No feedback found for this course_code (empty body)
       tags:
         - Feedback
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
-          description: Unique identifier code for course
-      description: Returns all feedback for a course
+        - $ref: "#/components/parameters/course_code"
     post:
       summary: Adds feedback to a course
+      description: >-
+        Adds feedback to a given course. The student must be enrolled in the
+        course (checked with the courses service), and each student can only
+        leave one piece of feedback per course.
       responses:
         "201":
-          description: ""
+          description: Created feedback
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Feedback"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Course or student not found, or student not enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Student has already given feedback for this course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Courses service unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
       tags:
         - Feedback
-      description: Adds feedback to a given course, student must be enrolled in the course
       requestBody:
         content:
           application/json:
@@ -294,24 +350,20 @@ paths:
                 - comment
               properties:
                 student_id:
-                  type: string
-                  description: Unique identifier code for a student
+                  type: integer
+                  description: Unique identifier for a student, sent as a number (e.g. 1)
                 comment:
                   type: string
                   description: Students feedback on the course
         required: true
       parameters:
-        - name: course_code
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/course_code"
   /students:
     get:
       summary: Get all students
       responses:
         "200":
-          description: ""
+          description: All students
           content:
             application/json:
               schema:
@@ -324,13 +376,19 @@ paths:
       summary: Create a new student
       responses:
         "201":
-          description: ""
+          description: Created student
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "409":
-          description: "Student with sent email already exists"
+          description: Student with sent email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
       tags:
         - Students
       requestBody:
@@ -360,31 +418,40 @@ paths:
       responses:
         "204":
           description: Deleted student
+        "400":
+          $ref: "#/components/responses/InvalidId"
         "404":
           description: Student already deleted or not found
       tags:
         - Students
       parameters:
-        - name: student_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/student_id"
     patch:
       summary: Update student details
+      description: Only the fields sent are updated
       responses:
         "200":
-          description: ""
+          description: Updated student
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Student"
+        "400":
+          description: Request body failed validation, or student_id is not an integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Student not found (empty body)
+        "409":
+          description: Student with sent email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
       parameters:
-        - name: student_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/student_id"
       requestBody:
         content:
           application/json:
@@ -408,22 +475,68 @@ paths:
       summary: Get a student's details
       responses:
         "200":
-          description: ""
+          description: The student
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/InvalidId"
         "404":
-          description: Student not found
+          description: Student not found (empty body)
       parameters:
-        - name: student_id
-          in: path
-          schema:
-            type: string
-          required: true
+        - $ref: "#/components/parameters/student_id"
       tags:
         - Students
 components:
+  parameters:
+    course_code:
+      name: course_code
+      in: path
+      description: Unique identifier code for course
+      schema:
+        type: string
+      required: true
+    student_id:
+      name: student_id
+      in: path
+      description: Unique identifier for a student
+      schema:
+        type: integer
+      required: true
+    enrolment_student_id:
+      name: student_id
+      in: path
+      description: Unique identifier for a student (validated by the students service)
+      schema:
+        type: string
+      required: true
+    feedback_id:
+      name: feedback_id
+      in: path
+      description: Unique identifier for a feedback submission
+      schema:
+        type: integer
+      required: true
+  responses:
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InvalidId:
+      description: Path ID is not an integer (`invalid id`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    StudentsServiceUnavailable:
+      description: Students service unreachable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     Course:
       type: object
@@ -440,10 +553,34 @@ components:
           description: Unique identifier for course
         student_ids:
           type: array
-          description: Array of student IDs
+          description: Array of enrolled student IDs
           items:
             type: string
           uniqueItems: true
+    CourseSummary:
+      type: object
+      required:
+        - title
+        - course_code
+      properties:
+        title:
+          type: string
+          description: The name of the course
+        course_code:
+          type: string
+          description: Unique identifier for course
+    Enrolment:
+      type: object
+      required:
+        - course_code
+        - student_id
+      properties:
+        course_code:
+          type: string
+          description: Unique identifier for course
+        student_id:
+          type: string
+          description: Unique identifier for a student
     Feedback:
       type: object
       required:
@@ -453,14 +590,14 @@ components:
         - comment
       properties:
         feedback_id:
-          type: string
+          type: integer
           description: Unique identifier for a feedback submission
           readOnly: true
         course_code:
           type: string
           description: Unique identifier for course
         student_id:
-          type: string
+          type: integer
           description: Unique identifier for a student
         comment:
           type: string
@@ -474,7 +611,7 @@ components:
         - degree
       properties:
         student_id:
-          type: string
+          type: integer
           description: Unique identifier for a student
           readOnly: true
         name:
@@ -487,6 +624,29 @@ components:
         degree:
           type: string
           description: Degree the student is enrolled for
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          description: >-
+            A message string, or for request body validation failures, the
+            array of Zod issues
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  path:
+                    type: array
+                    items:
+                      type: string
+                  message:
+                    type: string
   securitySchemes:
     ApiKey:
       type: apiKey
