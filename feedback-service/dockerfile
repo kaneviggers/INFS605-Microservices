@@ -7,4 +7,6 @@ RUN npm ci
 COPY . .
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+RUN npm run build
+
+CMD ["node", "dist/server.js"]

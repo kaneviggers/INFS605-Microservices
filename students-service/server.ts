@@ -131,7 +131,7 @@ if (require.main === module) {
   initDb()
     .then(() =>
       app.listen(PORT, () =>
-        console.log(`course-catalogue service listening on ${PORT}`),
+        console.log(`students-catalogue service listening on ${PORT}`),
       ),
     )
     .catch((err) => {
