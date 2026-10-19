@@ -1,6 +1,6 @@
 import request from "supertest";
-import { app } from "./server";
-import { pool, initDb } from "./db";
+import { app } from "../server";
+import { pool, initDb } from "../db";
 import {
   afterAll,
   afterEach,

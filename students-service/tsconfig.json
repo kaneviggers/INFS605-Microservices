@@ -11,6 +11,6 @@
         "outDir": "dist",
         "types": ["node", "jest"]
     },
-    "include": ["*.ts"],
+    "include": ["*.ts", "test/jest.global-setup.ts", "test/jest.global-teardown.ts", "test/students-service.test.ts"],
     "exclude": ["*.test.ts", "jest.*.ts"]
 }

@@ -11,6 +11,6 @@
         "outDir": "dist",
         "types": ["node", "jest"]
     },
-    "include": ["*.ts"],
+    "include": ["*.ts", "test/courses-service.test.ts"],
     "exclude": ["*.test.ts", "jest.*.ts"]
 }
