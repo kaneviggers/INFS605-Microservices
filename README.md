@@ -3,7 +3,9 @@
 - [x] Courses service
 - [x] Students service
 - [x] Feedback service
-- [ ] Zod payload validation
+- [x] Zod payload validation
+- [x] Jest testing
+- [x] Typescript migration
 - [ ] Proper logging
 - [ ] RLS
 - [ ] Authentication
