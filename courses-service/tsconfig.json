@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "module": "node16",
+        "target": "es2022",
+        "moduleResolution": "node16",
+        "esModuleInterop": true,
+        "strict": true,
+        "isolatedModules": true,
+        "skipLibCheck": true,
+        "rootDir": ".",
+        "outDir": "dist",
+        "types": ["node", "jest"]
+    },
+    "include": ["*.ts"],
+    "exclude": ["*.test.ts", "jest.*.ts"]
+}
