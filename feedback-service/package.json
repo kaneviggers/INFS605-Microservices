@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "jest --runInBand"
+    "test": "cd ./test; jest --runInBand"
   },
   "dependencies": {
     "@testcontainers/postgresql": "^12.2.1",
