@@ -97,9 +97,7 @@ app.post("/courses", async (req, res) => {
       if (err.code === "23505")
         return res.status(409).json({ error: "course already exists" });
       else return res.status(500).json({ error: "database error" });
-    } else {
-      return res.status(500).json({ error: "something went wrong" });
-    }
+    } else return res.status(500).json({ error: "something went wrong" });
   }
 });
 

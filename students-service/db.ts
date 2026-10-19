@@ -1,8 +1,8 @@
-const { Pool } = require('pg');
+import { Pool } from 'pg';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
-async function initDb() {
+export async function initDb() {
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS students (
@@ -18,5 +18,3 @@ async function initDb() {
         throw err
     }
 }
-
-module.exports = { pool, initDb }
