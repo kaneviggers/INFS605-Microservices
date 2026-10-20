@@ -122,13 +122,10 @@ The first run can take a while because it pulls the `postgres:16` image.
     └── test/                # Jest config, Testcontainers setup and tests
 ```
 
-## Roadmap
+## Video walkthroughs
 
-- [x] Courses service
-- [x] Students service
-- [x] Feedback service
-- [x] Zod payload validation
-- [x] Jest testing
-- [x] Typescript migration
-- [ ] RLS
-- [ ] Authentication
+### Codebase walkthrough
+<iframe width="560" height="315" src="https://www.youtube.com/embed/WnpUlIomSaM?si=YrJOODs-IooDOYWr" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### Postman collection walkthrough
+<iframe width="560" height="315" src="https://www.youtube.com/embed/nOjP5rB8L2M?si=HRzRy84RTc8z9EPZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
