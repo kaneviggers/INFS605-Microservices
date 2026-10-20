@@ -6,7 +6,7 @@ import { pool, initDb } from "./db";
 import { patch_course, post_course, post_enroll } from "./types";
 import * as z from "zod";
 import { ZodObject } from "zod";
-import { DatabaseError } from "pg";
+import { DatabaseError, QueryResult } from "pg";
 
 function validate_payload(body: Object, type: ZodObject<any>, res: Response) {
   const result = type.safeParse(body);
@@ -19,6 +19,30 @@ function validate_payload(body: Object, type: ZodObject<any>, res: Response) {
   return result.data;
 }
 
+async function query_database(
+  query: string,
+  res: Response,
+  values: unknown[] = [],
+  errors: Record<string, [number, string]> = {},
+): Promise<QueryResult | null> {
+  try {
+    return await pool.query(query, values);
+  } catch (err) {
+    // Use the caller's status and message for known error codes, otherwise 500
+    const mapped =
+      err instanceof DatabaseError && err.code ? errors[err.code] : undefined;
+    if (mapped) res.status(mapped[0]).json({ error: mapped[1] });
+    else
+      res.status(500).json({
+        error:
+          err instanceof DatabaseError
+            ? "database error"
+            : "something went wrong",
+      });
+    return null;
+  }
+}
+
 export const app = express();
 app.use(express.json());
 
@@ -29,27 +53,37 @@ app.get("/health", (req, res) => {
 
 // Get all courses
 app.get("/courses", async (req, res) => {
-  const { rows } = await pool.query(`
+  const result = await query_database(
+    `
         SELECT c.course_code, c.title, COALESCE(array_agg(e.student_id) FILTER (WHERE e.student_id IS NOT NULL), '{}') AS student_ids
         FROM courses c
         LEFT JOIN enrolments e USING (course_code)
-        GROUP BY c.course_code`);
-  res.json(rows);
+        GROUP BY c.course_code`,
+    res,
+  );
+  if (!result) return;
+
+  return res.json(result.rows);
 });
 
 // Get a course by course_code
 app.get("/courses/:course_code", async (req, res) => {
-  const { rows } = await pool.query(
+  const { course_code } = req.params;
+
+  const result = await query_database(
     `
         SELECT c.course_code, c.title, COALESCE(array_agg(e.student_id) FILTER (WHERE e.student_id IS NOT NULL), '{}') AS student_ids
         FROM courses c
         LEFT JOIN enrolments e USING (course_code)
         WHERE c.course_code = $1
         GROUP BY c.course_code`,
-    [req.params.course_code],
+    res,
+    [course_code],
   );
-  if (rows.length == 0) return res.status(404).end();
-  res.json(rows);
+  if (!result) return;
+
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows);
 });
 
 // Update a course
@@ -59,23 +93,27 @@ app.patch(`/courses/:course_code`, async (req, res) => {
   >;
   if (!data) return;
 
-  const { rows } = await pool.query(
+  const result = await query_database(
     `UPDATE courses SET title = $1 WHERE course_code = $2 RETURNING course_code, title`,
+    res,
     [data.title, req.params.course_code],
   );
+  if (!result) return;
 
-  if (rows.length == 0) return res.status(404).end();
-
-  res.json(rows[0]);
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows[0]);
 });
 
 // Delete a course
 app.delete(`/courses/:course_code`, async (req, res) => {
-  const { rowCount } = await pool.query(
+  const result = await query_database(
     `DELETE FROM courses WHERE course_code = $1`,
+    res,
     [req.params.course_code],
   );
-  res.status(rowCount ? 204 : 404).end();
+  if (!result) return;
+
+  return res.status(result.rowCount ? 204 : 404).end();
 });
 
 // Create a course
@@ -85,20 +123,15 @@ app.post("/courses", async (req, res) => {
   >;
   if (!data) return;
 
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO courses (course_code, title) VALUES ($1, $2) RETURNING course_code, title`,
-      [data.course_code, data.title],
-    );
-    res.status(201).json({ ...rows[0], student_ids: [] });
-  } catch (err) {
-    if (err instanceof DatabaseError) {
-      // If it already exists
-      if (err.code === "23505")
-        return res.status(409).json({ error: "course already exists" });
-      else return res.status(500).json({ error: "database error" });
-    } else return res.status(500).json({ error: "something went wrong" });
-  }
+  const result = await query_database(
+    `INSERT INTO courses (course_code, title) VALUES ($1, $2) RETURNING course_code, title`,
+    res,
+    [data.course_code, data.title],
+    { "23505": [409, "course already exists"] },
+  );
+  if (!result) return;
+
+  return res.status(201).json({ ...result.rows[0], student_ids: [] });
 });
 
 // Enroll a student
@@ -125,26 +158,20 @@ app.post("/courses/:course_code/students", async (req, res) => {
   }
 
   // Add student to course
-  try {
-    await pool.query(
-      `
-            INSERT INTO enrolments (course_code, student_id) VALUES ($1, $2)`,
-      [course_code, data.student_id],
-    );
-    res
-      .status(201)
-      .json({ course_code: course_code, student_id: data.student_id });
-  } catch (err) {
-    if (err instanceof DatabaseError) {
-      if (err.code === "23503")
-        return res.status(404).json({ error: "course not found" });
-      if (err.code === "23505")
-        return res.status(409).json({ error: "student already enrolled" });
-      else return res.status(500).json({ error: "database error" });
-    } else {
-      return res.status(500).json({ error: "something went wrong" });
-    }
-  }
+  const result = await query_database(
+    `INSERT INTO enrolments (course_code, student_id) VALUES ($1, $2)`,
+    res,
+    [course_code, data.student_id],
+    {
+      "23503": [404, "course not found"],
+      "23505": [409, "student already enrolled"],
+    },
+  );
+  if (!result) return;
+
+  return res
+    .status(201)
+    .json({ course_code: course_code, student_id: data.student_id });
 });
 
 // Unenroll a student
@@ -168,12 +195,14 @@ app.delete("/courses/:course_code/students/:student_id", async (req, res) => {
   }
 
   // Remove the student from the course
-  const { rowCount } = await pool.query(
-    `
-            DELETE FROM enrolments WHERE course_code = $1 AND student_id = $2`,
+  const result = await query_database(
+    `DELETE FROM enrolments WHERE course_code = $1 AND student_id = $2`,
+    res,
     [course_code, student_id],
   );
-  res.status(rowCount ? 204 : 404).end();
+  if (!result) return;
+
+  return res.status(result.rowCount ? 204 : 404).end();
 });
 
 // Returns http code of if the student is enrolled
@@ -195,15 +224,24 @@ app.get("/courses/:course_code/students/:student_id", async (req, res) => {
   }
 
   // Check if course exists
-  const { rowCount } = await pool.query(`SELECT * FROM courses WHERE course_code = $1`, [course_code]);
-  if (!rowCount) return res.status(404).json({ error: 'course not found' })
+  const course = await query_database(
+    `SELECT * FROM courses WHERE course_code = $1`,
+    res,
+    [course_code],
+  );
+  if (!course) return;
+  if (!course.rowCount)
+    return res.status(404).json({ error: "course not found" });
 
   // See if there is a student enrolled
-  const { rowCount : rowCount_enrolled } = await pool.query(
+  const enrolment = await query_database(
     `SELECT * FROM enrolments WHERE course_code = $1 AND student_id = $2`,
+    res,
     [course_code, student_id],
   );
-  res.status(rowCount_enrolled ? 200 : 404).end();
+  if (!enrolment) return;
+
+  return res.status(enrolment.rowCount ? 200 : 404).end();
 });
 
 // Only start listening when run directly (not when imported by tests)

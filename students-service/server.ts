@@ -6,7 +6,7 @@ import { pool, initDb } from "./db";
 import { post_student, patch_student } from "./types";
 import * as z from "zod";
 import { ZodObject } from "zod";
-import { DatabaseError } from "pg";
+import { DatabaseError, QueryResult } from "pg";
 
 function validate_payload(body: Object, type: ZodObject<any>, res: Response) {
   const result = type.safeParse(body);
@@ -19,6 +19,30 @@ function validate_payload(body: Object, type: ZodObject<any>, res: Response) {
   return result.data;
 }
 
+async function query_database(
+  query: string,
+  res: Response,
+  values: unknown[] = [],
+  errors: Record<string, [number, string]> = {},
+): Promise<QueryResult | null> {
+  try {
+    return await pool.query(query, values);
+  } catch (err) {
+    // Use the caller's status and message for known error codes, otherwise 500
+    const mapped =
+      err instanceof DatabaseError && err.code ? errors[err.code] : undefined;
+    if (mapped) res.status(mapped[0]).json({ error: mapped[1] });
+    else
+      res.status(500).json({
+        error:
+          err instanceof DatabaseError
+            ? "database error"
+            : "something went wrong",
+      });
+    return null;
+  }
+}
+
 export const app = express();
 app.use(express.json());
 
@@ -29,8 +53,10 @@ app.get("/health", (req, res) => {
 
 // Get all students
 app.get("/students", async (req, res) => {
-  const { rows } = await pool.query(`SELECT * FROM students`);
-  res.json(rows);
+  const result = await query_database(`SELECT * FROM students`, res);
+  if (!result) return;
+
+  return res.json(result.rows);
 });
 
 // Create a new student
@@ -40,22 +66,15 @@ app.post("/students", async (req, res) => {
   >;
   if (!data) return;
 
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO students (name, email, degree) VALUES ($1, $2, $3) RETURNING student_id, name, email, degree`,
-      [data.name, data.email, data.degree],
-    );
-    res.status(201).json(rows[0]);
-  } catch (err) {
-    if (err instanceof DatabaseError) {
-      // If it already exists
-      if (err.code === "23505") {
-        return res
-          .status(409)
-          .json({ error: "student with that email already exists" });
-      } else return res.status(500).json({ error: "database error" });
-    } else return res.status(500).json({ error: "something went wrong" });
-  }
+  const result = await query_database(
+    `INSERT INTO students (name, email, degree) VALUES ($1, $2, $3) RETURNING student_id, name, email, degree`,
+    res,
+    [data.name, data.email, data.degree],
+    { "23505": [409, "student with that email already exists"] },
+  );
+  if (!result) return;
+
+  return res.status(201).json(result.rows[0]);
 });
 
 // Get a student
@@ -64,16 +83,15 @@ app.get("/students/:student_id", async (req, res) => {
 
   if (Number.isNaN(parseInt(student_id))) return res.status(400).json({ error: 'invalid id' })
 
-  try {
-    const { rows } = await pool.query(
-      `SELECT * FROM students WHERE student_id = $1`,
-      [req.params.student_id],
-    );
-    if (!rows.length) return res.status(404).end();
-    res.json(rows[0]);
-  } catch (err) {
-    console.log(err);
-  }
+  const result = await query_database(
+    `SELECT * FROM students WHERE student_id = $1`,
+    res,
+    [student_id],
+  );
+  if (!result) return;
+
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows[0]);
 });
 
 // Update a student
@@ -87,28 +105,21 @@ app.patch("/students/:student_id", async (req, res) => {
 
   if (Number.isNaN(parseInt(student_id))) return res.status(400).json({ error: 'invalid id' })
 
-  try {
-    const { rows } = await pool.query(
-      `UPDATE students
+  const result = await query_database(
+    `UPDATE students
             SET name = COALESCE($1, name),
                 email = COALESCE($2, email),
                 degree = COALESCE($3, degree)
             WHERE student_id = $4
             RETURNING student_id, name, email, degree`,
-      [data.name, data.email, data.degree, student_id],
-    );
-    if (rows.length == 0) return res.status(404).end();
-    res.json(rows[0]);
-  } catch (err) {
-    if (err instanceof DatabaseError) {
-      // Student with that email already exists
-      if (err.code === "23505")
-        return res
-          .status(409)
-          .json({ error: "student with that email already exists" });
-      else return res.status(500).json({ error: "database error" });
-    } else return res.status(500).json({ error: "something went wrong" });
-  }
+    res,
+    [data.name, data.email, data.degree, student_id],
+    { "23505": [409, "student with that email already exists"] },
+  );
+  if (!result) return;
+
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows[0]);
 });
 
 // Delete a student
@@ -118,11 +129,14 @@ app.delete(`/students/:student_id`, async (req, res) => {
 
   if (Number.isNaN(parseInt(student_id))) return res.status(400).json({ error: 'invalid id' })
 
-  const { rowCount } = await pool.query(
+  const result = await query_database(
     `DELETE FROM students WHERE student_id = $1`,
-    [req.params.student_id],
+    res,
+    [student_id],
   );
-  res.status(rowCount ? 204 : 404).end();
+  if (!result) return;
+
+  return res.status(result.rowCount ? 204 : 404).end();
 });
 
 // Only start listening when run directly (not when imported by tests)

@@ -6,7 +6,7 @@ import { pool, initDb } from "./db";
 import { patch_feedback, post_feedback } from "./types";
 import * as z from "zod";
 import { ZodObject } from "zod";
-import { DatabaseError } from "pg";
+import { DatabaseError, QueryResult } from "pg";
 
 function validate_payload(body: Object, type: ZodObject<any>, res: Response) {
   const result = type.safeParse(body);
@@ -17,6 +17,30 @@ function validate_payload(body: Object, type: ZodObject<any>, res: Response) {
   }
 
   return result.data;
+}
+
+async function query_database(
+  query: string,
+  res: Response,
+  values: unknown[] = [],
+  errors: Record<string, [number, string]> = {},
+): Promise<QueryResult | null> {
+  try {
+    return await pool.query(query, values);
+  } catch (err) {
+    // Use the caller's status and message for known error codes, otherwise 500
+    const mapped =
+      err instanceof DatabaseError && err.code ? errors[err.code] : undefined;
+    if (mapped) res.status(mapped[0]).json({ error: mapped[1] });
+    else
+      res.status(500).json({
+        error:
+          err instanceof DatabaseError
+            ? "database error"
+            : "something went wrong",
+      });
+    return null;
+  }
 }
 
 export const app = express();
@@ -53,22 +77,15 @@ app.post("/feedback/course/:course_code", async (req, res) => {
   }
 
   // Add feedback to course
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO feedback (course_code, student_id, comment) VALUES ($1, $2, $3) RETURNING feedback_id, course_code, student_id, comment`,
-      [course_code, data.student_id, data.comment],
-    );
-    res.status(201).json(rows[0]);
-  } catch (err) {
-    if (err instanceof DatabaseError) {
-      // If student has already created feedback for this course
-      if (err.code === "23505")
-        return res.status(409).json({
-          error: "student has already given feedback for this course",
-        });
-      else return res.status(500).json({ error: "database error" });
-    } else return res.status(500).json({ error: "something went wrong" });
-  }
+  const result = await query_database(
+    `INSERT INTO feedback (course_code, student_id, comment) VALUES ($1, $2, $3) RETURNING feedback_id, course_code, student_id, comment`,
+    res,
+    [course_code, data.student_id, data.comment],
+    { "23505": [409, "student has already given feedback for this course"] },
+  );
+  if (!result) return;
+
+  return res.status(201).json(result.rows[0]);
 });
 
 // Get feedback by id
@@ -78,23 +95,29 @@ app.get("/feedback/:feedback_id", async (req, res) => {
   if (Number.isNaN(parseInt(feedback_id)))
     return res.status(400).json({ error: "invalid id" });
 
-  const { rows } = await pool.query(
+  const result = await query_database(
     `SELECT * FROM feedback WHERE feedback_id = $1`,
+    res,
     [feedback_id],
   );
-  if (!rows.length) return res.status(404).end();
-  res.json(rows[0]);
+  if (!result) return;
+
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows[0]);
 });
 
 // Get all feedback for a course
 app.get("/feedback/course/:course_code", async (req, res) => {
   const { course_code } = req.params;
-  const { rows } = await pool.query(
+  const result = await query_database(
     `SELECT * FROM feedback WHERE course_code = $1`,
+    res,
     [course_code],
   );
-  if (!rows.length) return res.status(404).end();
-  res.json(rows);
+  if (!result) return;
+
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows);
 });
 
 // Update feedback
@@ -109,13 +132,15 @@ app.patch(`/feedback/:feedback_id`, async (req, res) => {
   if (Number.isNaN(parseInt(feedback_id)))
     return res.status(400).json({ error: "invalid id" });
 
-  const { rows } = await pool.query(
+  const result = await query_database(
     `UPDATE feedback SET comment = $1 WHERE feedback_id = $2 RETURNING feedback_id, course_code, student_id, comment`,
+    res,
     [data.comment, feedback_id],
   );
-  if (rows.length == 0) return res.status(404).end();
+  if (!result) return;
 
-  res.json(rows[0]);
+  if (!result.rowCount) return res.status(404).end();
+  return res.json(result.rows[0]);
 });
 
 // Delete feedback
@@ -123,11 +148,14 @@ app.delete(`/feedback/:feedback_id`, async (req, res) => {
   const { feedback_id } = req.params;
   if (Number.isNaN(parseInt(feedback_id)))
     return res.status(400).json({ error: "invalid id" });
-  const { rowCount } = await pool.query(
+  const result = await query_database(
     `DELETE FROM feedback WHERE feedback_id = $1`,
+    res,
     [feedback_id],
   );
-  res.status(rowCount ? 204 : 404).end();
+  if (!result) return;
+
+  return res.status(result.rowCount ? 204 : 404).end();
 });
 
 // Only start listening when run directly (not when imported by tests)
