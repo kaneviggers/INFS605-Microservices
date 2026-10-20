@@ -130,6 +130,5 @@ The first run can take a while because it pulls the `postgres:16` image.
 - [x] Zod payload validation
 - [x] Jest testing
 - [x] Typescript migration
-- [ ] Proper logging
 - [ ] RLS
 - [ ] Authentication
