@@ -124,6 +124,8 @@ The first run can take a while because it pulls the `postgres:16` image.
 
 ## Video walkthroughs
 
+Click a thumbnail below to watch the video on YouTube.
+
 ### Codebase walkthrough
 [![Codebase walkthrough](https://img.youtube.com/vi/WnpUlIomSaM/maxresdefault.jpg)](https://www.youtube.com/watch?v=WnpUlIomSaM)
 
