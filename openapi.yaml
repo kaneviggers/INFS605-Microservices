@@ -647,12 +647,3 @@ components:
                       type: string
                   message:
                     type: string
-  securitySchemes:
-    ApiKey:
-      type: apiKey
-      in: header
-      name: X-Api-Key
-security:
-  - ApiKey: []
-servers:
-  - url: "https://infs.kaneviggers.com/api"

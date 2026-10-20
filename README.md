@@ -87,8 +87,6 @@ curl http://localhost:3000/health
 
 All routes are documented in the **[Postman collection](https://crimson-robot-321770.postman.co/workspace/My-Workspace~1cb289a1-21f8-4642-80f3-44d598149189/collection/30819450-91f26627-be79-4f03-8028-1871838efd40?action=share&creator=30819450)**. The full schema is in [`openapi.yaml`](openapi.yaml).
 
-> **Note:** Authentication isn't implemented yet (see the [Roadmap](#roadmap)). The `X-Api-Key` scheme in the spec is planned but not enforced.
-
 ## Running the tests
 
 Each service has its own Jest suite in its `test/` folder. The suites run against a real Postgres instance that [Testcontainers](https://testcontainers.com) starts for you, so **Docker must be running**. Calls to the other services are mocked.
