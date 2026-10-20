@@ -68,7 +68,7 @@ app.post("/feedback/course/:course_code", async (req, res) => {
     if (resp.status === 404)
       return res
         .status(resp.status)
-        .json({ error: "course or student not found" });
+        .json({ error: "course or student not found or student not enrolled in course" });
     if (!resp.ok)
       return res.status(resp.status).json({ error: "courses-service error" });
   } catch (err) {

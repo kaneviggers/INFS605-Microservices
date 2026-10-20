@@ -13,5 +13,5 @@ export const post_course = z.object({
 
 // POST /courses/:course_code/students
 export const post_enroll = z.object({
-    student_id: z.string()
+    student_id: z.number()
 })

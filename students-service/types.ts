@@ -1,6 +1,6 @@
 import * as z from 'zod';
 
-// POST & PATCH /students
+// POST /students
 export const post_student = z.object({
     name: z.string(),
     email: z.email(),

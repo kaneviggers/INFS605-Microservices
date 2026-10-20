@@ -178,20 +178,21 @@ app.post("/courses/:course_code/students", async (req, res) => {
 app.delete("/courses/:course_code/students/:student_id", async (req, res) => {
   const { course_code, student_id } = req.params;
 
+  if (Number.isNaN(parseInt(student_id))) return res.status(400).json({ error: 'invalid id' })
+
   // Check if student exists and is currently enrolled
   try {
     const resp = await fetch(
       `http://courses-service:3000/courses/${course_code}/students/${student_id}`,
     );
     if (resp.status === 404) {
-      const body = await resp.json();
-      return res.status(404).json(body);
+      return res.status(404).json({ error: 'student or course not found' });
     }
     if (!resp.ok)
-      return res.status(resp.status).json({ error: "students-service error" });
+      return res.status(resp.status).json({ error: "courses-service error" });
   } catch (err) {
     // This would be a network failure
-    return res.status(502).json({ error: "students-service unavailable" });
+    return res.status(502).json({ error: "courses-service unavailable" });
   }
 
   // Remove the student from the course
@@ -208,6 +209,8 @@ app.delete("/courses/:course_code/students/:student_id", async (req, res) => {
 // Returns http code of if the student is enrolled
 app.get("/courses/:course_code/students/:student_id", async (req, res) => {
   const { course_code, student_id } = req.params;
+
+  if (Number.isNaN(parseInt(student_id))) return res.status(400).json({ error: 'invalid id' })
 
   // Check if student exists
   try {
