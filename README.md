@@ -125,7 +125,7 @@ The first run can take a while because it pulls the `postgres:16` image.
 ## Video walkthroughs
 
 ### Codebase walkthrough
-<iframe width="560" height="315" src="https://www.youtube.com/embed/WnpUlIomSaM?si=YrJOODs-IooDOYWr" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![Codebase walkthrough](https://img.youtube.com/vi/WnpUlIomSaM/maxresdefault.jpg)](https://www.youtube.com/watch?v=WnpUlIomSaM)
 
 ### Postman collection walkthrough
-<iframe width="560" height="315" src="https://www.youtube.com/embed/nOjP5rB8L2M?si=HRzRy84RTc8z9EPZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![Postman collection walkthrough](https://img.youtube.com/vi/nOjP5rB8L2M/maxresdefault.jpg)](https://www.youtube.com/watch?v=nOjP5rB8L2M)
