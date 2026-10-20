@@ -12,20 +12,22 @@
     "test": "cd ./test; jest --runInBand"
   },
   "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
     "@testcontainers/postgresql": "^12.2.1",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
-    "express": "^5.3.0",
     "jest": "^30.5.2",
-    "pg": "^8.23.1",
     "supertest": "^7.3.1",
     "testcontainers": "^12.2.1",
     "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
-    "zod": "^4.6.7"
+    "typescript": "^5.9.3"
   }
 }
