@@ -129,3 +129,17 @@ Click a thumbnail below to watch the video on YouTube.
 
 ### Postman collection walkthrough
 [![Postman collection walkthrough](https://img.youtube.com/vi/nOjP5rB8L2M/maxresdefault.jpg)](https://www.youtube.com/watch?v=nOjP5rB8L2M)
+
+## Development process
+
+1. **Brainstorming the services.** I started by working out how the services would fit together: what data each one owns, and which service needs to ask another before it acts (courses checks that a student exists before enrolling them; feedback checks that the student is enrolled before accepting feedback).
+
+2. **Spec first.** Before writing any code I wrote the OpenAPI spec in Postman. Defining every route, payload and response up front helped iron out gaps in the design and made the system easier to visualise. The final version is in [`openapi.yaml`](openapi.yaml).
+
+3. **MVP in plain JavaScript.** Next I built a working minimum version of all three services in plain JS, running in Docker Compose from the start, so the containers, databases and service-to-service calls were proven early.
+
+4. **Hardening.** With the MVP working, I hardened each service: migrating to TypeScript, adding Zod payload validation, and writing a Jest test suite that runs against a real Postgres via Testcontainers. I did this on the courses service first, then repeated the same pattern for students and feedback.
+
+5. **Documentation.** I then wrote this README, the architecture diagram and the Postman collection.
+
+6. **Bug fixing and refinement.** Smaller fixes came throughout, including refactoring repeated database error handling into a shared `query_database` helper. Recording the demo videos also surfaced bugs: when something broke on camera, I stopped, fixed it, and resumed the recording.
